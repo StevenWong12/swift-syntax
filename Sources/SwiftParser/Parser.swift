@@ -112,8 +112,10 @@ public struct Parser {
   public static let defaultMaximumNestingLevel = 256
   #endif
 
+  public let parseTransition: IncrementalParseTransition?
+
   /// Initializes a `Parser` from the given string.
-  public init(_ input: String, maximumNestingLevel: Int? = nil) {
+  public init(_ input: String, maximumNestingLevel: Int? = nil, parseTransition: IncrementalParseTransition? = nil) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     self.arena = ParsingSyntaxArena(
@@ -125,7 +127,8 @@ public struct Parser {
     let interned = input.withUTF8 { [arena] buffer in
       return arena.internSourceBuffer(buffer)
     }
-
+    
+    self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(interned)
     self.currentToken = self.lexemes.advance()
   }
@@ -144,7 +147,7 @@ public struct Parser {
   ///            arena is created automatically, and `input` copied into the
   ///            arena. If non-`nil`, `input` must be within its registered
   ///            source buffer or allocator.
-  public init(_ input: UnsafeBufferPointer<UInt8>, maximumNestingLevel: Int? = nil, arena: ParsingSyntaxArena? = nil) {
+  public init(_ input: UnsafeBufferPointer<UInt8>, maximumNestingLevel: Int? = nil, arena: ParsingSyntaxArena? = nil, parseTransition: IncrementalParseTransition? = nil) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     var sourceBuffer: UnsafeBufferPointer<UInt8>
@@ -159,6 +162,7 @@ public struct Parser {
       sourceBuffer = self.arena.internSourceBuffer(input)
     }
 
+    self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(sourceBuffer)
     self.currentToken = self.lexemes.advance()
   }
@@ -599,5 +603,16 @@ extension Parser {
       RawTokenSyntax(missing: .period, arena: arena),
       afterContainsAnyNewline
     )
+  }
+}
+
+// (WIP) Incremental parse
+extension Parser {
+  mutating func loadCurrentSyntaxNodeFromCache(for kind: SyntaxKind) -> Syntax? {
+    guard let parseTransition = self.parseTransition else { return nil }
+
+    let lookUpHelper = IncrementalParseLookup(transition: parseTransition)
+
+    return nil
   }
 }
