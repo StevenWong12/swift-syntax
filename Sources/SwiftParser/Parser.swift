@@ -611,7 +611,12 @@ extension Parser {
   mutating func loadCurrentSyntaxNodeFromCache(for kind: SyntaxKind) -> Syntax? {
     guard let parseTransition = self.parseTransition else { return nil }
 
-    let lookUpHelper = IncrementalParseLookup(transition: parseTransition)
+    var lookUpHelper = IncrementalParseLookup(transition: parseTransition)
+    let offset = self.lexemes.getOffsetToStart(self.currentToken)
+
+    if let node = lookUpHelper.lookUp(offset, kind: kind) {
+      return node
+    }
 
     return nil
   }

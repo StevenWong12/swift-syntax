@@ -86,6 +86,10 @@ extension Lexer {
       currentToken = self.advance()
     }
 
+    public func getOffsetToStart(_ token: Lexer.Lexeme) -> Int {
+      return self.sourceBufferStart.distance(to: token.cursor)
+    }
+
     public var debugDescription: String {
       let remainingText = self.nextToken.debugDescription + String(syntaxText: SyntaxText(baseAddress: self.cursor.input.baseAddress, count: self.cursor.input.count))
       if remainingText.count > 100 {
