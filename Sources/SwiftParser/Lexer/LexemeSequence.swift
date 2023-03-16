@@ -90,6 +90,20 @@ extension Lexer {
       return self.sourceBufferStart.distance(to: token.cursor)
     }
 
+    public mutating func advance(by offset: Int) -> Lexer.Lexeme? {
+      assert(offset > 0)
+      var consumedOffset = 0
+      var result: Lexer.Lexeme?
+      while consumedOffset < offset {
+        consumedOffset += self.nextToken.byteLength
+        result = self.advance()
+        if self.cursor.isAtEndOfFile {
+          break
+        }
+      }
+      return result
+    }
+
     public var debugDescription: String {
       let remainingText = self.nextToken.debugDescription + String(syntaxText: SyntaxText(baseAddress: self.cursor.input.baseAddress, count: self.cursor.input.count))
       if remainingText.count > 100 {

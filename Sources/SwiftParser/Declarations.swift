@@ -1342,6 +1342,11 @@ extension Parser {
     _ attrs: DeclAttributes,
     _ handle: RecoveryConsumptionHandle
   ) -> RawFunctionDeclSyntax {
+    if let syntaxNode = self.loadCurrentSyntaxNodeFromCache(for: .functionDecl),
+	// TODO: an unnecessary Syntax->RawSyntax cast, maybe a more elegant way?
+	    let returnNode = RawFunctionDeclSyntax(syntaxNode.raw) {
+		  return returnNode
+	  }
     let (unexpectedBeforeFuncKeyword, funcKeyword) = self.eat(handle)
     let unexpectedBeforeIdentifier: RawUnexpectedNodesSyntax?
     let identifier: RawTokenSyntax

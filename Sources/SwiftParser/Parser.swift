@@ -614,7 +614,9 @@ extension Parser {
     var lookUpHelper = IncrementalParseLookup(transition: parseTransition)
     let offset = self.lexemes.getOffsetToStart(self.currentToken)
 
-    if let node = lookUpHelper.lookUp(offset, kind: kind) {
+    if let node = lookUpHelper.lookUp(offset, kind: kind),
+       let nextToken = lexemes.advance(by: node.byteSize) {
+      self.currentToken = nextToken
       return node
     }
 
