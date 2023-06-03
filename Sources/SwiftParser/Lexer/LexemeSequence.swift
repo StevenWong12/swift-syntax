@@ -50,6 +50,19 @@ extension Lexer {
       return self.nextToken
     }
 
+    func getOffsetToStart(_ token: Lexer.Lexeme) -> Int {
+      return self.sourceBufferStart.distance(to: token.cursor)
+    }
+
+    mutating func advance(by offset: Int, currentToken: inout Lexer.Lexeme) {
+      self.cursor = currentToken.cursor
+      self.cursor.position = self.cursor.position.advanced(by: offset)
+
+      self.nextToken = self.cursor.nextToken(sourceBufferStart: self.sourceBufferStart, stateAllocator: lexerStateAllocator)
+
+      currentToken = self.advance()
+    }
+
     /// Reset the lexeme sequence to the state we were in when lexing `splitToken`
     /// but after we consumed `consumedPrefix` bytes from `splitToken`.
     /// - Warning: Do not add more usages of this function.

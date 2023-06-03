@@ -151,6 +151,10 @@ extension Parser {
   ///     statement → compiler-control-statement
   ///     statements → statement statements?
   mutating func parseCodeBlockItem(isAtTopLevel: Bool, allowInitDecl: Bool) -> RawCodeBlockItemSyntax? {
+    if let syntax = self.loadCurrentSyntaxNodeFromCache(for: .codeBlockItem) {
+      return RawCodeBlockItemSyntax(syntax.raw)
+    }
+
     if let remainingTokens = remainingTokensIfMaximumNestingLevelReached() {
       return RawCodeBlockItemSyntax(
         remainingTokens,

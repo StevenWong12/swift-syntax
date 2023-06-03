@@ -101,6 +101,8 @@ public struct Parser {
   /// When this nesting level is exceeded, the parser should stop parsing.
   let maximumNestingLevel: Int
 
+  let parseTransition: IncrementalParseTransition?
+
   /// A default maximum nesting level that is used if the client didn't
   /// explicitly specify one. Debug builds of the parser comume a lot more stack
   /// space and thus have a lower default maximum nesting level.
@@ -111,7 +113,7 @@ public struct Parser {
   #endif
 
   /// Initializes a ``Parser`` from the given string.
-  public init(_ input: String, maximumNestingLevel: Int? = nil) {
+  public init(_ input: String, maximumNestingLevel: Int? = nil, parseTransition: IncrementalParseTransition? = nil) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     self.arena = ParsingSyntaxArena(
@@ -124,6 +126,7 @@ public struct Parser {
       return arena.internSourceBuffer(buffer)
     }
 
+    self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(interned)
     self.currentToken = self.lexemes.advance()
   }
@@ -142,7 +145,7 @@ public struct Parser {
   ///            arena is created automatically, and `input` copied into the
   ///            arena. If non-`nil`, `input` must be within its registered
   ///            source buffer or allocator.
-  public init(_ input: UnsafeBufferPointer<UInt8>, maximumNestingLevel: Int? = nil, arena: ParsingSyntaxArena? = nil) {
+  public init(_ input: UnsafeBufferPointer<UInt8>, maximumNestingLevel: Int? = nil, arena: ParsingSyntaxArena? = nil, parseTransition: IncrementalParseTransition? = nil) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     var sourceBuffer: UnsafeBufferPointer<UInt8>
@@ -157,6 +160,7 @@ public struct Parser {
       sourceBuffer = self.arena.internSourceBuffer(input)
     }
 
+    self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(sourceBuffer)
     self.currentToken = self.lexemes.advance()
   }
@@ -627,5 +631,21 @@ extension Parser {
       RawTokenSyntax(missing: .period, arena: arena),
       afterContainsAnyNewline
     )
+  }
+}
+
+// MARK: Incremental Parsing
+extension Parser {
+  mutating func loadCurrentSyntaxNodeFromCache(for kind: SyntaxKind) -> Syntax? {
+    guard let parseTransition = self.parseTransition else { return nil }
+
+    var lookUpHelper = IncrementalParseLookup(transition: parseTransition)
+    let currentOffset = self.lexemes.getOffsetToStart(self.currentToken)
+    if let node = lookUpHelper.lookUp(currentOffset, kind: kind) {
+      self.lexemes.advance(by: node.byteSize, currentToken: &self.currentToken)
+      return node
+    }
+
+    return nil
   }
 }

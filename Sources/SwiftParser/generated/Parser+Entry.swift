@@ -21,7 +21,7 @@ extension Parser {
     source: String,
     parseTransition: IncrementalParseTransition? = nil
   ) -> SourceFileSyntax {
-    var parser = Parser(source)
+    var parser = Parser(source, parseTransition: parseTransition)
     return SourceFileSyntax.parse(from: &parser)
   }
   
@@ -32,7 +32,7 @@ extension Parser {
     maximumNestingLevel: Int? = nil,
     parseTransition: IncrementalParseTransition? = nil
   ) -> SourceFileSyntax {
-    var parser = Parser(source, maximumNestingLevel: maximumNestingLevel)
+    var parser = Parser(source, maximumNestingLevel: maximumNestingLevel, parseTransition: parseTransition)
     return SourceFileSyntax.parse(from: &parser)
   }
 }
