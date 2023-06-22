@@ -428,4 +428,16 @@ public class IncrementalParsingTests: XCTestCase {
       """
     )
   }
+  
+  public func testTrailingClosure() {
+    XCTExpectFailure("WIP: Add lookahead for incremental parse")
+    assertIncrementalParse(
+      """
+      foo() {}
+      trailingClosure: ⏩️switch x {
+        default: break
+      }⏸️{}⏪️
+      """
+    )
+  }
 }
