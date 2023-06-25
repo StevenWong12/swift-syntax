@@ -43,6 +43,9 @@ public final class IncrementalParseReusedNodeCollector:
   }
 }
 
+/// Record the affect range for potential re-used nodes. When edits intersect the affect range, the node is not able to be re-used.
+///
+/// This is also a trigger to enable parser to parse incrementally.
 public final class IncrementalParseNodeAffectRangeCollector {
   fileprivate var nodeAffectRange: [RawSyntax.ID: Int] = [:]
 

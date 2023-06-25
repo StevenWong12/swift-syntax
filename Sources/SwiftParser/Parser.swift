@@ -682,7 +682,7 @@ extension Parser {
   }
 }
 
-/// Record the furthest offset to `sourceBufferStart` that is reached by ``Parser.Lookahead`` or ``Parser.peek()`` in ``Lexer.LexemeSequence``
+/// Record the furthest offset to `sourceBufferStart` that is reached by  ``Parser.Peek()`` or ``Lookahead`` in ``Lexer/LexemeSequence``
 public struct LookaheadTracker {
   private var _furthestOffset: Int
 

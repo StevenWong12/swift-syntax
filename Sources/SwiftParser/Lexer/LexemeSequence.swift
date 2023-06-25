@@ -32,10 +32,12 @@ extension Lexer {
     /// usually less than 0.1% of the memory allocated by the syntax arena.
     var lexerStateAllocator = BumpPtrAllocator(slabSize: 256)
 
+    /// Compute the offset of the end of next token
     var offsetToNextTokenEnd: Int {
       self.getOffsetToStart(self.nextToken) + self.nextToken.byteLength
     }
 
+    /// See doc comments in ``LookaheadTracker``
     var lookaheadTracker: UnsafeMutablePointer<LookaheadTracker>
 
     fileprivate init(sourceBufferStart: Lexer.Cursor, cursor: Lexer.Cursor) {
@@ -61,10 +63,12 @@ extension Lexer {
       return self.nextToken
     }
 
+    /// Get the offset of `token` to `sourceBufferStart`.
     func getOffsetToStart(_ token: Lexer.Lexeme) -> Int {
       return self.sourceBufferStart.distance(to: token.cursor)
     }
 
+    /// Advance the the cursor by `offset` and reset `currentToken`
     mutating func advance(by offset: Int, currentToken: inout Lexer.Lexeme) {
       self.cursor = currentToken.cursor
       self.cursor.position = self.cursor.position.advanced(by: offset)
