@@ -103,6 +103,8 @@ public struct Parser {
 
   let parseTransition: IncrementalParseTransition?
 
+  var parseNodeAffectRange: IncrementalParseNodeAffectRangeCollector?
+
   /// A default maximum nesting level that is used if the client didn't
   /// explicitly specify one. Debug builds of the parser comume a lot more stack
   /// space and thus have a lower default maximum nesting level.
@@ -113,7 +115,12 @@ public struct Parser {
   #endif
 
   /// Initializes a ``Parser`` from the given string.
-  public init(_ input: String, maximumNestingLevel: Int? = nil, parseTransition: IncrementalParseTransition? = nil) {
+  public init(
+    _ input: String,
+    maximumNestingLevel: Int? = nil,
+    parseNodeAffectRange: IncrementalParseNodeAffectRangeCollector? = nil,
+    parseTransition: IncrementalParseTransition? = nil
+  ) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     self.arena = ParsingSyntaxArena(
@@ -129,6 +136,7 @@ public struct Parser {
     self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(interned)
     self.currentToken = self.lexemes.advance()
+    self.parseNodeAffectRange = parseNodeAffectRange
   }
 
   /// Initializes a ``Parser`` from the given input buffer.
@@ -145,7 +153,13 @@ public struct Parser {
   ///            arena is created automatically, and `input` copied into the
   ///            arena. If non-`nil`, `input` must be within its registered
   ///            source buffer or allocator.
-  public init(_ input: UnsafeBufferPointer<UInt8>, maximumNestingLevel: Int? = nil, arena: ParsingSyntaxArena? = nil, parseTransition: IncrementalParseTransition? = nil) {
+  public init(
+    _ input: UnsafeBufferPointer<UInt8>,
+    maximumNestingLevel: Int? = nil,
+    parseNodeAffectRange: IncrementalParseNodeAffectRangeCollector? = nil,
+    parseTransition: IncrementalParseTransition? = nil,
+    arena: ParsingSyntaxArena? = nil
+  ) {
     self.maximumNestingLevel = maximumNestingLevel ?? Self.defaultMaximumNestingLevel
 
     var sourceBuffer: UnsafeBufferPointer<UInt8>
@@ -163,6 +177,7 @@ public struct Parser {
     self.parseTransition = parseTransition
     self.lexemes = Lexer.tokenize(sourceBuffer)
     self.currentToken = self.lexemes.advance()
+    self.parseNodeAffectRange = parseNodeAffectRange
   }
 
   mutating func missingToken(_ kind: RawTokenKind, text: SyntaxText? = nil) -> RawTokenSyntax {
@@ -241,6 +256,7 @@ public struct Parser {
 extension Parser {
   /// Retrieves the token following the current token without consuming it.
   func peek() -> Lexer.Lexeme {
+    lexemes.recordFurthestOffset()
     return self.lexemes.peek()
   }
 }
@@ -637,9 +653,12 @@ extension Parser {
 // MARK: Incremental Parsing
 extension Parser {
   mutating func loadCurrentSyntaxNodeFromCache(for kind: SyntaxKind) -> Syntax? {
-    guard let parseTransition = self.parseTransition else { return nil }
-
-    var lookUpHelper = IncrementalParseLookup(transition: parseTransition)
+    guard let parseTransition = self.parseTransition,
+      let parseNodeAffectRange = self.parseNodeAffectRange
+    else {
+      return nil
+    }
+    var lookUpHelper = IncrementalParseLookup(transition: parseTransition, nodeAffectRangeCollector: parseNodeAffectRange)
     let currentOffset = self.lexemes.getOffsetToStart(self.currentToken)
     if let node = lookUpHelper.lookUp(currentOffset, kind: kind) {
       self.lexemes.advance(by: node.byteSize, currentToken: &self.currentToken)
@@ -647,5 +666,32 @@ extension Parser {
     }
 
     return nil
+  }
+
+  func registerNodeForIncrementalParse(node: RawSyntax, startToken: Lexer.Lexeme) {
+    if let parseNodeAffectRange {
+      parseNodeAffectRange.registerNodeForIncrementalParse(
+        node: node,
+        length: max(lookaheadFurthestOffset - self.lexemes.getOffsetToStart(startToken), node.byteLength + currentToken.byteLength)
+      )
+    }
+  }
+
+  public var lookaheadFurthestOffset: Int {
+    return lexemes.lookaheadTracker.pointee.furthestOffset
+  }
+}
+
+/// Record the furthest offset to `sourceBufferStart` that is reached by ``Parser.Lookahead`` or ``Parser.peek()`` in ``Lexer.LexemeSequence``
+public struct LookaheadTracker {
+  private var _furthestOffset: Int
+
+  public var furthestOffset: Int {
+    get { _furthestOffset }
+    set { _furthestOffset = max(newValue, furthestOffset) }
+  }
+
+  init(furthestOffset: Int = 0) {
+    self._furthestOffset = furthestOffset
   }
 }

@@ -30,13 +30,14 @@ public func assertIncrementalParse(
   let originalString = String(originalSource)
   let editedString = String(editedSource)
 
-  let originalTree = Parser.parse(source: originalString)
+  let nodeAffectRangeCollector = IncrementalParseNodeAffectRangeCollector()
+  let originalTree = Parser.parse(source: originalString, parseNodeAffectRange: nodeAffectRangeCollector)
 
   let reusedNodesCollector = IncrementalParseReusedNodeCollector()
   let transition = IncrementalParseTransition(previousTree: originalTree, edits: concurrentEdits, reusedNodeDelegate: reusedNodesCollector)
 
   let newTree = Parser.parse(source: editedString)
-  let incrementallyParsedNewTree = Parser.parse(source: editedString, parseTransition: transition)
+  let incrementallyParsedNewTree = Parser.parse(source: editedString, parseNodeAffectRange: nodeAffectRangeCollector, parseTransition: transition)
 
   // Round-trip
   assertStringsEqualWithDiff(
@@ -61,11 +62,11 @@ public func assertIncrementalParse(
   }
 
   // Re-used nodes
-  if reusedNodesCollector.rangeAndNodes.count != expectedReusedNodes.count {
+  if reusedNodesCollector.nodes.count != expectedReusedNodes.count {
     XCTFail(
       """
-      Expected \(expectedReusedNodes.count) re-used nodes but received \(reusedNodesCollector.rangeAndNodes.count):
-      \(reusedNodesCollector.rangeAndNodes.map {$0.1.description}.joined(separator: "\n"))
+      Expected \(expectedReusedNodes.count) re-used nodes but received \(reusedNodesCollector.nodes.count):
+      \(reusedNodesCollector.nodes.map {$0.description}.joined(separator: "\n"))
       """,
       file: file,
       line: line
@@ -79,11 +80,11 @@ public func assertIncrementalParse(
       continue
     }
 
-    guard let reusedNode = reusedNodesCollector.rangeAndNodes.first(where: { $0.0 == range })?.1 else {
+    guard let reusedNode = reusedNodesCollector.nodes.first(where: { $0.byteRangeAfterTrimmingTrivia == range }) else {
       XCTFail(
         """
         Fail to match the range of \(expectedReusedNode.source) in:
-        \(reusedNodesCollector.rangeAndNodes.map({"\($0.0): \($0.1.description)"}).joined(separator: "\n"))
+        \(reusedNodesCollector.nodes.map({"\($0.byteRangeAfterTrimmingTrivia): \($0.description)"}).joined(separator: "\n"))
         """,
         file: expectedReusedNode.file,
         line: expectedReusedNode.line

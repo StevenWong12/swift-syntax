@@ -19,9 +19,10 @@ extension Parser {
   /// `Parser.init` for more details.
   public static func parse(
     source: String,
+    parseNodeAffectRange: IncrementalParseNodeAffectRangeCollector? = nil,
     parseTransition: IncrementalParseTransition? = nil
   ) -> SourceFileSyntax {
-    var parser = Parser(source, parseTransition: parseTransition)
+    var parser = Parser(source, parseNodeAffectRange: parseNodeAffectRange, parseTransition: parseTransition)
     return SourceFileSyntax.parse(from: &parser)
   }
   
@@ -30,9 +31,10 @@ extension Parser {
   public static func parse(
     source: UnsafeBufferPointer<UInt8>,
     maximumNestingLevel: Int? = nil,
+    parseNodeAffectRange: IncrementalParseNodeAffectRangeCollector? = nil,
     parseTransition: IncrementalParseTransition? = nil
   ) -> SourceFileSyntax {
-    var parser = Parser(source, maximumNestingLevel: maximumNestingLevel, parseTransition: parseTransition)
+    var parser = Parser(source, maximumNestingLevel: maximumNestingLevel, parseNodeAffectRange: parseNodeAffectRange, parseTransition: parseTransition)
     return SourceFileSyntax.parse(from: &parser)
   }
 }

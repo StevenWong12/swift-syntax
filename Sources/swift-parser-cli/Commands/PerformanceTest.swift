@@ -14,6 +14,7 @@ import _InstructionCounter
 import ArgumentParser
 import Foundation
 import SwiftParser
+import SwiftSyntax
 
 struct PerformanceTest: ParsableCommand {
   static var configuration = CommandConfiguration(
@@ -21,6 +22,9 @@ struct PerformanceTest: ParsableCommand {
     abstract:
       "Parse all .swift files in '--directory' and its subdirectories '--iteration' times and output the average time (in milliseconds) one iteration took."
   )
+
+  @Flag(name: .long, help: "Parse files incrementally")
+  var incrementalParse: Bool = false
 
   @Option(help: "The directory in which all .swift files should be parsed")
   var directory: String
@@ -37,19 +41,39 @@ struct PerformanceTest: ParsableCommand {
       .filter { $0.pathExtension == "swift" }
       .map { try Data(contentsOf: $0) }
 
-    let start = Date()
+    var incrementalParseTransition: IncrementalParseTransition? = nil
+    var incrementalParseAffectRangeCollector: IncrementalParseNodeAffectRangeCollector? = nil
+
+    var totalTime: TimeInterval = .zero
     let startInstructions = getInstructionsExecuted()
-    for _ in 0..<self.iterations {
+    var previousTreeDict: [Data: (SourceFileSyntax, IncrementalParseNodeAffectRangeCollector?)] = [:]
+    for iter in 0..<self.iterations {
       for file in files {
+        if incrementalParse == true {
+          incrementalParseAffectRangeCollector = previousTreeDict[file]?.1 ?? IncrementalParseNodeAffectRangeCollector()
+          if iter != 0 {
+            incrementalParseTransition = IncrementalParseTransition(
+              previousTree: previousTreeDict[file]!.0,
+              edits: ConcurrentEdits(fromSequential: []),
+              reusedNodeDelegate: nil
+            )
+          }
+        }
         file.withUnsafeBytes { buf in
-          _ = Parser.parse(source: buf.bindMemory(to: UInt8.self))
+          let start = Date()
+          let tree = Parser.parse(
+            source: buf.bindMemory(to: UInt8.self),
+            parseNodeAffectRange: incrementalParseAffectRangeCollector,
+            parseTransition: incrementalParseTransition
+          )
+          totalTime += Date().timeIntervalSince(start)
+          previousTreeDict[file] = (tree, incrementalParseAffectRangeCollector)
         }
       }
     }
     let endInstructions = getInstructionsExecuted()
-    let endDate = Date()
 
-    print("Time:         \(endDate.timeIntervalSince(start) / Double(self.iterations) * 1000)ms")
+    print("Time:         \(totalTime / Double(self.iterations) * 1000)ms")
     if endInstructions != startInstructions {
       // endInstructions == startInstructions only happens if we are on non-macOS
       // platforms that don't support `getInstructionsExecuted`. Don't display anything.

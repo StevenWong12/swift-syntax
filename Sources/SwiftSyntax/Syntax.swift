@@ -448,6 +448,11 @@ public extension SyntaxProtocol {
     return ByteSourceRange(offset: position.utf8Offset, length: byteSize)
   }
 
+  /// The  byte source range of this node exluding leading and trailing trivia.
+  var byteRangeAfterTrimmingTrivia: ByteSourceRange {
+    return ByteSourceRange(offset: positionAfterSkippingLeadingTrivia.utf8Offset, length: byteSizeAfterTrimmingTrivia)
+  }
+
   /// The length this node takes up spelled out in the source, excluding its
   /// leading or trailing trivia.
   var contentLength: SourceLength {

@@ -32,15 +32,26 @@ extension Lexer {
     /// usually less than 0.1% of the memory allocated by the syntax arena.
     var lexerStateAllocator = BumpPtrAllocator(slabSize: 256)
 
+    var offsetToNextTokenEnd: Int {
+      self.getOffsetToStart(self.nextToken) + self.nextToken.byteLength
+    }
+
+    var lookaheadTracker: UnsafeMutablePointer<LookaheadTracker>
+
     fileprivate init(sourceBufferStart: Lexer.Cursor, cursor: Lexer.Cursor) {
       self.sourceBufferStart = sourceBufferStart
       self.cursor = cursor
       self.nextToken = self.cursor.nextToken(sourceBufferStart: self.sourceBufferStart, stateAllocator: lexerStateAllocator)
+      self.lookaheadTracker = .allocate(capacity: 1)
     }
 
     @_spi(Testing)
     public mutating func next() -> Lexer.Lexeme? {
       return self.advance()
+    }
+
+    public func recordFurthestOffset() {
+      self.lookaheadTracker.pointee.furthestOffset = self.offsetToNextTokenEnd
     }
 
     mutating func advance() -> Lexer.Lexeme {

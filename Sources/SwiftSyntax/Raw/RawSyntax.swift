@@ -918,6 +918,12 @@ extension RawSyntax {
   }
 }
 
+extension RawSyntax: Identifiable {
+  public var id: UnsafeRawPointer {
+    return UnsafeRawPointer(pointer)
+  }
+}
+
 #if DEBUG
 /// See `SyntaxMemoryLayout`.
 var RawSyntaxDataMemoryLayouts: [String: SyntaxMemoryLayout.Value] = [

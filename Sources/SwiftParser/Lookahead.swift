@@ -33,6 +33,7 @@ extension Parser {
     ) {
       self.lexemes = lexemes
       self.currentToken = currentToken
+      self.lexemes.recordFurthestOffset()
     }
 
     fileprivate init(cloning other: Parser) {
@@ -90,6 +91,7 @@ extension Parser.Lookahead {
   mutating func consumeAnyToken() {
     tokensConsumed += 1
     self.currentToken = self.lexemes.advance()
+    self.lexemes.recordFurthestOffset()
   }
 
   mutating func consumeAnyToken(remapping: RawTokenKind) {
